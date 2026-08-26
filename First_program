@@ -1,0 +1,61 @@
+
+%%writefile app.py
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable as m_l
+
+url = "https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv"
+df = pd.read_csv(url)
+
+df['Age']=df['Age'].fillna(df['Age'].mean())
+df=df.drop(columns='Cabin')
+df=df.dropna()
+
+
+
+st.title("🚢 Titanic EDA Interactive Dashboard")
+st.write("Exploratory Data Analysis generated using Pandas & Matplotlib")
+st.metric(label="Total Passengers Analyzed", value=len(df))
+
+df
+fig,axes=plt.subplots(2,2,figsize=(10,6))
+
+pclass_fare = df.groupby('Pclass')['Fare'].mean()
+pclass_fare
+axes[0,0].bar(pclass_fare.index.astype(str),pclass_fare.values, width=0.5, color='orange',ec='k', label='avg_fare')
+axes[0,0].set_title('Pclass VS Average_Fare($)')
+axes[0,0].set_xlabel('Pclass')
+axes[0,0].set_ylabel('Average_Fare($)')
+axes[0,0].legend()
+
+axes[0,1].hist(df['Age'],bins=10, rwidth=0.8,ec='k', label='Age', color='g')
+axes[0,1].set_title('Different Ages')
+axes[0,1].set_ylabel('No.of members')
+axes[0,1].set_xlabel('Ages')
+axes[0,1].legend()
+
+sex_survival = df.groupby('Sex')['Survived'].mean()*100
+axes[1,0].bar(sex_survival.index,sex_survival.values,ec='k', color='y', width=0.8,label='Count')
+axes[1,0].set_title('Gender count')
+axes[1,0].set_xlabel('Gender')
+axes[1,0].set_ylabel('Count of people ')
+axes[1,0].legend ()
+
+sc=axes[1,1].scatter(df['Age'],df['Fare'],ec='k',c=df['Survived'],cmap='coolwarm',s=35,alpha=0.6,label='Age')
+axes[1,1].set_title('Age VS Fare')
+axes[1,1].set_xlabel('Ages')
+axes[1,1].set_ylabel('Count')
+axes[1,1].grid(alpha=0.5,ls=':')
+axes[1,1].legend()
+d=m_l(axes[1,1])
+
+cax=d.append_axes("right",pad=0.2, size="5%" )
+fig.colorbar(sc,cax=cax, label='Survived')
+plt.tight_layout()
+st.pyplot(fig)
+
+!wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+!dpkg -i cloudflared-linux-amd64.deb
+!streamlit run app.py & cloudflared tunnel -

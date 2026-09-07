@@ -1,0 +1,132 @@
+import pandas as pd
+import numpy as np
+import io
+from sklearn.model_selection import train_test_split
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
+from imblearn.over_sampling import RandomOverSampler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.metrics import classification_report
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+
+
+csv_data = """Customer_ID,Age,City,Education,Experience,Salary,Target_Purchased
+EMP-101,25.0,Hyderabad,B.Tech,2.5,45.0,0
+EMP-102,32.0,Bangalore,M.Tech,7.0,95.0,1
+EMP-103, 26.0,Chennai,Inter,1.0,22.0,0
+EMP-104,45.0,,B.Tech,15.0,150.0,1
+EMP-105,19.0,Hyderabad,,0.5,18.0,0
+EMP-106,28.0,Bangalore,SSC,4.0,55.0,0
+EMP-107,,Hyderabad,M.Tech,8.5,110.0,1
+EMP-108,52.0,Chennai,B.Tech,,180.0,1
+EMP-109,23.0,,Inter,1.5,,0
+EMP-110,35.0,Bangalore,B.Tech,10.0,120.0,1"""
+
+
+
+
+# 1. Dataset Load
+
+df = pd.read_csv(io.StringIO(csv_data))
+
+
+# 2. Drop ID and Target
+
+X = df.drop(columns=['Customer_ID', 'Target_Purchased'])
+y = df['Target_Purchased']
+
+
+# 3. Train Test Split First (Data Leakage Avoid cheydaniki)
+
+x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+
+# 4. NUMERICAL DATA PROCESSING
+num_cols = ['Age', 'Experience', 'Salary'] # Continuous numbers
+
+
+num_imputer = SimpleImputer(strategy='median')
+x_train_num = num_imputer.fit_transform(x_train[num_cols])
+x_test_num = num_imputer.transform(x_test[num_cols])
+
+
+scaler = StandardScaler()
+x_train_num_scaled = scaler.fit_transform(x_train_num)
+x_test_num_scaled = scaler.transform(x_test_num)
+
+
+# 5. CATEGORICAL DATA PROCESSING
+# Categorical Imputer (Mode / Most Frequent for NaN values)
+
+cat_imputer = SimpleImputer(strategy='most_frequent')
+x_train_city = cat_imputer.fit_transform(x_train[['City']])
+x_test_city = cat_imputer.transform(x_test[['City']])
+
+
+# A. City Column (Nominal -> OneHotEncoder)
+ohe = OneHotEncoder(drop='first', sparse_output=False)
+x_train_city_ohe = ohe.fit_transform(x_train_city)
+x_test_city_ohe = ohe.transform(x_test_city)
+
+
+# B. Education Column (Ordinal -> OrdinalEncoder) because it is an order data like 1,2,3,..
+x_train_edu = cat_imputer.fit_transform(x_train[['Education']])
+x_test_edu = cat_imputer.transform(x_test[['Education']])
+
+
+# Hierarchy Define chestham (e.g., SSC < Inter < B.Tech < M.Tech)
+edu_order = [['SSC', 'Inter', 'B.Tech', 'M.Tech']]
+ordinal = OrdinalEncoder(categories=edu_order)
+x_train_edu_ord = ordinal.fit_transform(x_train_edu)
+x_test_edu_ord = ordinal.transform(x_test_edu)
+
+
+# 6. MERGE / CONCATENATE ALL PROCESSED FEATURES
+x_train_processed = np.hstack((x_train_num_scaled, x_train_city_ohe, x_train_edu_ord))
+x_test_processed = np.hstack((x_test_num_scaled, x_test_city_ohe, x_test_edu_ord))
+
+
+# 7. OVERSAMPLING (Training Data Only)
+ros = RandomOverSampler(random_state=42)
+x_train_rs, y_train_rs = ros.fit_resample(x_train_processed, y_train)
+
+
+# 8. MODEL TRAINING & EVALUATION
+
+
+#K-NearestNeighbors (used to calculate the prediction by finding the smallest distance using actual trained data used for small data)
+
+knn_model = KNeighborsClassifier(n_neighbors=3)
+knn_model.fit(x_train_rs, y_train_rs)
+y_pred_knn = knn_model.predict(x_test_processed)
+
+
+#Naive_bayes(calculation the prediction by probability)
+
+nb = GaussianNB()
+nb.fit(x_train_rs, y_train_rs)
+y_pred_nb = nb.predict(x_test_processed)
+
+
+#Logistic Regeration (used to predict continuous values on a straight line)
+
+lr = LogisticRegression()
+lr.fit(x_train_rs,y_train_rs)
+y_pred_lr = lr.predict(x_test_processed)
+
+
+#Support Vector classification (used to predect values if
+#1.if the data is separately arranged then draws a line b/w them and draw two margins just touch the both nearest samples using those data the model predect s 
+#2.if the data is merged together then SVC splites data into 2D and 3D and draws a straight line mid to the two datas continuous the same process as seperated data
+
+v = SVC()
+v.fit(x_train_rs,y_train_rs)
+y_pred_v = v.predict(x_test_processed)
+
+
+print("KNN Report:\n", classification_report(y_test, y_pred_knn))
+print("NB Report:\n", classification_report(y_test, y_pred_nb))
+print("Logistic R Report:\n", classification_report(y_test, y_pred_lr))
+print("SVC Report:\n", classification_report(y_test, y_pred_v))

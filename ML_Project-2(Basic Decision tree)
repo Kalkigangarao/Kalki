@@ -1,0 +1,143 @@
+import pandas as pd
+import io
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from imblearn.over_sampling import RandomOverSampler
+
+
+
+data = '''Student_ID,City,Branch,CGPA,Internship_Experience,Coding_Score,Placed
+S1,Hyderabad,CSE,8.5,Yes,88,1
+S2,Hyderabad,ECE,6.2,No,45,0
+S3,Vizag,CSE,7.8,Yes,72,1
+S4,Vizag,IT,5.5,No,30,0
+S5,Vijayawada,CSE,9.0,No,95,1
+S6,Hyderabad,IT,7.1,Yes,65,1
+S7,Vijayawada,ECE,6.0,No,40,0
+S8,Vizag,CSE,8.1,No,80,1
+S9,Hyderabad,ECE,5.8,Yes,50,0
+S10,Vijayawada,IT,7.5,Yes,70,1
+S11,Hyderabad,CSE,8.9,Yes,92,1
+S12,Vizag,ECE,6.1,No,42,0
+S13,Vijayawada,IT,6.8,Yes,60,1
+S14,Hyderabad,CSE,7.4,No,75,1
+S15,Vizag,ECE,5.9,No,35,0
+S16,Vijayawada,CSE,8.2,Yes,85,1
+S17,Hyderabad,IT,6.5,No,55,0
+S18,Vizag,IT,7.9,Yes,78,1
+S19,Vijayawada,ECE,5.6,No,38,0
+S20,Hyderabad,CSE,9.1,Yes,96,1
+S21,Vizag,CSE,8.0,Yes,82,1
+S22,Hyderabad,ECE,6.3,No,48,0
+S23,Vijayawada,IT,7.0,Yes,62,1
+S24,Hyderabad,IT,5.7,No,32,0
+S25,Vizag,CSE,8.7,Yes,90,1
+S26,Vijayawada,ECE,6.4,No,44,0
+S27,Hyderabad,CSE,7.6,Yes,74,1
+S28,Vizag,ECE,5.8,No,36,0
+S29,Vijayawada,CSE,8.8,Yes,89,1
+S30,Hyderabad,IT,6.9,No,58,0
+S31,Vizag,IT,7.3,Yes,68,1
+S32,Vijayawada,ECE,6.1,No,41,0
+S33,Hyderabad,CSE,8.4,Yes,86,1
+S34,Vizag,CSE,6.6,No,52,0
+S35,Vijayawada,IT,7.7,Yes,76,1
+S36,Hyderabad,ECE,5.5,No,31,0
+S37,Vizag,IT,8.3,Yes,84,1
+S38,Vijayawada,CSE,9.2,Yes,98,1
+S39,Hyderabad,IT,6.2,No,46,0
+S40,Vizag,ECE,6.0,Yes,54,0
+S41,Vijayawada,IT,7.2,No,64,1
+S42,Hyderabad,CSE,8.6,Yes,87,1
+S43,Vizag,CSE,7.5,No,70,1
+S44,Vijayawada,ECE,5.9,No,37,0
+S45,Hyderabad,IT,8.1,Yes,81,1
+S46,Vizag,IT,6.4,No,49,0
+S47,Vijayawada,CSE,8.3,Yes,85,1
+S48,Hyderabad,ECE,6.7,Yes,59,1
+S49,Vizag,CSE,9.0,Yes,94,1
+S50,Vijayawada,IT,5.6,No,33,0
+S51,Hyderabad,CSE,7.9,Yes,79,1
+S52,Vizag,ECE,6.2,No,43,0
+S53,Vijayawada,IT,6.9,Yes,61,1
+S54,Hyderabad,IT,7.6,No,71,1
+S55,Vizag,CSE,8.8,Yes,91,1
+S56,Vijayawada,ECE,5.7,No,34,0
+S57,Hyderabad,CSE,8.2,Yes,83,1
+S58,Vizag,ECE,6.5,No,47,0
+S59,Vijayawada,CSE,7.7,Yes,77,1
+S60,Hyderabad,IT,6.0,No,40,0
+S61,Vizag,IT,7.4,Yes,69,1
+S62,Vijayawada,ECE,6.3,No,45,0
+S63,Hyderabad,CSE,8.7,Yes,89,1
+S64,Vizag,CSE,6.8,No,56,0
+S65,Vijayawada,IT,7.8,Yes,78,1
+S66,Hyderabad,ECE,5.6,No,32,0
+S67,Vizag,IT,8.2,Yes,83,1
+S68,Vijayawada,CSE,9.1,Yes,97,1
+S69,Hyderabad,IT,6.3,No,48,0
+S70,Vizag,ECE,6.1,Yes,55,0
+S71,Vijayawada,IT,7.1,No,63,1
+S72,Hyderabad,CSE,8.5,Yes,86,1
+S73,Vizag,CSE,7.6,No,72,1
+S74,Vijayawada,ECE,5.8,No,36,0
+S75,Hyderabad,IT,8.0,Yes,80,1
+S76,Vizag,IT,6.3,No,48,0
+S77,Vijayawada,CSE,8.4,Yes,87,1
+S78,Hyderabad,ECE,6.6,Yes,58,1
+S79,Vizag,CSE,8.9,Yes,93,1
+S80,Vijayawada,IT,5.5,No,31,0
+S81,Hyderabad,CSE,7.8,Yes,78,1
+S82,Vizag,ECE,6.3,No,44,0
+S83,Vijayawada,IT,6.8,Yes,60,1
+S84,Hyderabad,IT,7.5,No,70,1
+S85,Vizag,CSE,8.6,Yes,88,1
+S86,Vijayawada,ECE,5.8,No,35,0
+S87,Hyderabad,CSE,8.1,Yes,82,1
+S88,Vizag,ECE,6.4,No,46,0
+S89,Vijayawada,CSE,7.9,Yes,80,1
+S90,Hyderabad,IT,5.9,No,39,0
+S91,Vizag,IT,7.3,Yes,67,1
+S92,Vijayawada,ECE,6.2,No,43,0
+S93,Hyderabad,CSE,8.8,Yes,90,1
+S94,Vizag,CSE,6.7,No,53,0
+S95,Vijayawada,IT,7.9,Yes,79,1
+S96,Hyderabad,ECE,5.7,No,33,0
+S97,Vizag,IT,8.4,Yes,85,1
+S98,Vijayawada,CSE,9.3,Yes,99,1
+S99,Hyderabad,IT,6.1,No,45,0
+S100,Vizag,ECE,6.2,Yes,56,0'''
+
+
+df = pd.read_csv(io.StringIO(data))
+
+#Dropping unique columns because due to this unique columns the data gets leaked and overfitted
+df = df.drop(columns = 'Student_ID')
+
+x = df.drop(columns = 'Placed')
+y = df['Placed']
+
+x_train,x_test,y_train,y_test = train_test_split(x,y,test_size = 0.30,random_state = 42, stratify= y)
+
+#Encoding text columns only
+cat_column = ['City','Branch','Internship_Experience']
+ohe = OneHotEncoder(drop ='first',sparse_output=False)
+x_train_ohe = ohe.fit_transform(x_train[cat_column])
+x_test_ohe = ohe.transform(x_test[cat_column])
+
+
+#We don't need to use scaling in Decision trees
+#Randomoversampler is used to balance the class0 and class1
+ros = RandomOverSampler()
+x_train_rs,y_train_rs = ros.fit_resample(x_train_ohe,y_train)
+
+#Simply it is like IF-ELSE
+#Using threshold conditions it classifies that weather it i true or false 
+dt = DecisionTreeClassifier(max_depth=3,random_state=42)
+dt.fit(x_train_rs,y_train_rs)
+
+y_pred_dt = dt.predict(x_test_ohe)
+print("Accuracy Score :\n",accuracy_score(y_test,y_pred_dt))
+print("Classification Report:\n",classification_report(y_test,y_pred_dt))

@@ -1,0 +1,155 @@
+import pandas as pd
+from io import StringIO
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from imblearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import QuantileTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from imblearn.over_sampling import SMOTE
+import numpy as np
+
+data2="""Applicant_ID,Income_USD,Credit_Score,Debt_To_Income_Ratio,Loan_Amount_USD,Applicant_Notes,Loan_Approved
+1001,84322,764,0.18,34000,"Looking to consolidate my credit card debt into a single payment.",1
+1002,34211,540,0.52,18000,"Need money fast to repair my car transmission and engine issues.",0
+1003,115400,810,0.11,62000,"Funding a kitchen remodel and adding a deck to the backyard.",1
+1004,52000,612,0.38,15000,"Consolidating several high interest retail cards.",1
+1005,28000,480,0.65,45000,"Need a personal loan to start a brand new business venture.",0
+1006,67000,695,0.22,25000,"Paying for my daughter's upcoming university tuition semester.",1
+1007,91000,740,0.29,38000,"Covering medical bills not paid by my insurance company.",1
+1008,41000,580,0.47,12000,"Need funds to pay off past due taxes and utility accounts.",0
+1009,134000,790,0.08,80000,"Purchasing solar panels and energy efficient roofing.",1
+1010,48000,625,0.31,9000,"Taking a dream family vacation to Europe this summer.",1
+1011,29000,510,0.58,22000,"Paying off collection agencies before they take legal action.",0
+1012,73000,680,0.25,30000,"Upgrading my home office setup for a remote tech job.",1
+1013,105000,755,0.15,40000,"Down payment on a secondary investment rental property.",1
+1014,38000,595,0.41,14000,"Paying for an unexpected emergency dental surgery procedure.",1
+1015,55000,530,0.49,35000,"Consolidating payday loans and catching up on bills.",0
+1016,62000,640,0.33,18000,"Buying a reliable used sedan to commute safely to work.",1
+1017,122000,780,0.14,55000,"Financing a professional master's degree program tuition.",1
+1018,43000,565,0.44,11000,"Paying off local veterinary bill for my pet's surgery.",0
+1019,98000,725,0.21,29000,"Replacing an old leaking roof before winter storm season.",1
+1020,31000,495,0.61,16000,"Need extra cash to cover immediate family expenses.",0
+1021,87000,710,0.28,33000,"Consolidating multiple variable rate store credit lines.",1
+1022,50000,610,0.36,12000,"Funding home security system installation and new locks.",1
+1023,145000,815,0.07,75000,"Investing in updating HVAC units across my properties.",1
+1024,26000,520,0.55,8000,"Paying off past due rent to avoid sudden eviction notice.",0
+1025,71000,665,0.27,22000,"Consolidating medical debt into predictable fixed payments.",1
+1026,112000,760,0.19,48000,"Buying standard commercial equipment for expansion project.",1
+1027,39000,550,0.48,15000,"Fixing foundation cracks discovered in basement wall.",0
+1028,64000,635,0.34,17000,"Refurbishing bathroom with handicap accessible features.",1
+1029,128000,795,0.12,60000,"Purchasing high-end production gear for studio startup.",1
+1030,33000,505,0.59,19000,"Need bridging funds due to recent job loss interval.",0
+1031,81000,705,0.24,31000,"Consolidating three department store cards into one.",1
+1032,54000,618,0.39,14000,"Covering moving costs and rental deposit for relocation.",1
+1033,119000,775,0.16,50000,"Funding landscape architecture project for front yard.",1
+1034,27000,475,0.68,25000,"Urgent funding requested for dynamic small scale retail venture.",0
+1035,69000,675,0.26,20000,"Purchasing major kitchen appliances and dining furniture.",1
+1036,94000,735,0.23,36000,"Consolidating unsecured debt to lower total interest rate.",1
+1037,42000,575,0.46,13000,"Replacing broken water heater and outdated plumbing lines.",0
+1038,139000,805,0.09,85000,"Adding a second story extension to existing property.",1
+1039,47000,630,0.32,10000,"Paying funeral expenses for a sudden family tragedy.",1
+1040,30000,515,0.56,15000,"Paying down collection balances to fix personal credit.",0
+1041,76000,690,0.25,27000,"Consolidating lines of credit ahead of rate increases.",1
+1042,108000,750,0.17,42000,"Paying off final balances on student loan accounts.",1
+1043,36000,585,0.42,12000,"Need cash for urgent vehicle repairs to keep working.",1
+1044,101000,715,0.22,35000,"Refinancing premium outstanding debt to single issuer.",1
+1045,58000,540,0.51,28000,"Starting a local food cart business over the weekend.",0
+1046,65000,650,0.31,19000,"Upgrading farm fencing and barn doors on country property.",1
+1047,125000,785,0.13,58000,"Funding specialized flight school training and certification.",1
+1048,44000,560,0.45,16000,"Paying off overdraft accounts and back taxes owed.",0
+1049,89000,730,0.20,32000,"Installing new hardwood flooring throughout the house.",1
+1050,32000,490,0.63,20000,"Need urgent personal cash injection for ongoing expenses.",0
+1051,83000,712,0.23,28000,"Consolidating high-rate credit balances into fixed installment loan.",1
+1052,49000,605,0.37,14000,"Buying a dependable second-hand truck for hauling tools.",1
+1053,131000,798,0.11,65000,"Constructing an attached greenhouse and garden workspace.",1
+1054,25000,512,0.57,9500,"Clearing outstanding title loan before vehicle repossession.",0
+1055,74000,682,0.26,24000,"Consolidating credit cards used during long hospital stay.",1
+1056,116000,766,0.18,46000,"Purchasing heavy woodworking machinery for custom shop expansion.",1
+1057,40000,555,0.47,13500,"Replacing broken central AC system before hot season.",0
+1058,66000,642,0.33,18500,"Financing coding bootcamp education for structural career transition.",1
+1059,127000,791,0.12,62000,"Acquiring high-definition audio equipment for commercial production pod.",1
+1060,34000,498,0.60,17500,"To cover everyday bills due to unexpected hours cut.",0
+1061,82000,708,0.25,29500,"Consolidating separate consumer credit balances for easy management.",1
+1062,52000,622,0.38,15500,"Funding family relocation expenses to a new state.",1
+1063,121000,779,0.15,52000,"Building modern swimming pool and patio for residential use.",1
+1064,28000,482,0.66,23000,"Startup capital for an independent clothing boutique project.",0
+1065,70000,678,0.27,21500,"Replacing drafty old windows with double pane models.",1
+1066,95000,738,0.22,37000,"Consolidating wedding expenses into one predictable monthly cost.",1
+1067,41000,578,0.45,11500,"Paying off past due dental bills from oral surgery.",0
+1068,142000,808,0.08,82000,"Extending driveways and paving large commercial lot area.",1
+1069,46000,628,0.34,12500,"Buying inventory for seasonal online e-commerce venture stores.",1
+1070,31000,518,0.55,14500,"To clean up credit report metrics by settling debts.",0
+1071,78000,693,0.24,26500,"Consolidating variable rate loans into predictable monthly payments.",1
+1072,106000,752,0.16,41500,"Funding legal fees relating to adoption process completion.",1
+1073,37000,588,0.41,13000,"Fixing transmission issues on work vehicle immediately.",1
+1074,103000,718,0.21,34500,"Paying down student loan principal balances aggressively.",1
+1075,56000,535,0.50,26000,"Starting an independent dropshipping online retail experiment.",0
+1076,63000,648,0.32,20500,"Replacing main electrical panel to meet modern code.",1
+1077,124000,788,0.14,59000,"Paying tuition for executive MBA program upfront cost.",1
+1078,45000,562,0.44,15500,"Settle outstanding state tax lien before interest grows.",0
+1079,88000,732,0.19,33500,"Adding solar battery backup units to residential home.",1
+1080,29000,488,0.64,21000,"Personal cash flow help during strict winter seasonal shutdown.",0
+1081,85000,715,0.22,31000,"Consolidating diverse credit balances into single structured payout.",1
+1082,51000,608,0.36,14500,"Buying standard landscaping lawnmowers and commercial trailer equipment.",1
+1083,133000,802,0.10,67000,"Building separate detached accessory dwelling unit in back.",1
+1084,24000,508,0.59,10500,"Paying overdue utility balances and property taxes promptly.",0
+1085,75000,685,0.25,25500,"Consolidating revolving balances accrued during long job search.",1
+1086,118000,769,0.17,47500,"Purchasing CNC laser engraver for established signage factory.",1
+1087,38000,558,0.46,12000,"Urgent repair of broken sewer main line pipes.",0
+1088,68000,645,0.32,19500,"Funding advanced technical certificate course modules for advancement.",1
+1089,129000,793,0.11,64000,"Purchasing heavy camera rigging setups for indie feature.",1
+1090,35000,492,0.62,18000,"Covering basic household expenses until unemployment benefits process.",0
+1091,80000,702,0.26,28500,"Consolidating three card balances into fixed personal loan.",1
+1092,53000,615,0.39,16500,"Relocating cross country for a secure corporate position.",1
+1093,123000,782,0.14,54500,"Complete redesign of exterior landscaping and stone retaining.",1
+1094,27000,479,0.67,24500,"Initial funding for unique custom apparel printing operation.",0
+1095,72000,672,0.28,23500,"Installing modern insulation blanket layers across attic floor.",1
+1096,97000,742,0.21,38500,"Consolidating medical out of pocket balances into installments.",1
+1097,43000,572,0.44,13000,"Replacing corroded hot water copper piping in walls.",0
+1098,144000,812,0.07,88000,"Adding a massive modern multi car garage facility.",1
+1099,48000,632,0.33,11500,"Purchasing inventory for boutique craft store opening project.",1
+1100,32000,512,0.54,16000,"Clearing deep collection accounts to rescue credit standing.",0
+1101,79000,696,0.23,27500,"Consolidating high interest debt into affordable predictable payments.",1
+1102,109000,756,0.15,44500,"Paying off high rate personal lines of credit.",1
+1103,35000,592,0.40,11000,"Fixing engine issues on daily driver work vehicle.",1
+1104,104000,722,0.20,36500,"Paying down student loan balances to improve metrics.",1
+1105,57000,528,0.52,27500,"Opening a small neighborhood convenience shop market venture.",0
+1106,62000,652,0.30,21500,"Rewiring historical home property to meet current safety standards.",1
+1107,126000,792,0.13,61000,"Paying advanced tuition costs for medical school semester.",1
+1108,46000,559,0.43,17000,"Clearing old tax debt balances before penalty accumulates.",0
+1109,86000,735,0.18,34000,"Installing eco friendly smart heating and cooling systems.",1
+1110,30000,482,0.65,22500,"Need cash support through a slow winter work gap.",0
+1111,84000,718,0.21,32500,"Consolidating variable credit products to single fixed option.",1"""
+df = pd.read_csv(StringIO(data2))
+
+
+x = df.drop(columns = ['Applicant_ID','Loan_Approved'])
+y = df['Loan_Approved']
+x_train,x_test,y_train,y_test = train_test_split(x,y,test_size = 0.30,random_state = 42, stratify= y)
+
+
+num_cols = ['Income_USD','Credit_Score','Debt_To_Income_Ratio','Loan_Amount_USD']
+
+pp = ColumnTransformer(transformers=[
+    ('num',QuantileTransformer(output_distribution='normal',random_state=42), num_cols),
+    ('cat',TfidfVectorizer(max_features=10,stop_words='english'), 'Applicant_Notes')
+],
+remainder="drop",
+)
+
+pipline = Pipeline(steps=[
+    ('pp',pp),
+    ('smote',SMOTE(random_state=42)),
+    ('rf',RandomForestClassifier(n_estimators=100, max_depth=10,min_samples_leaf=2,random_state=42,n_jobs=-1))
+])
+
+pipline.fit(x_train,y_train)
+
+y_pred = pipline.predict(x_test)
+
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print(classification_report(y_test, y_pred))
+
+#In this code we get 100% accuracy due to the perfectly balanced data, clear mathematical boundaries
